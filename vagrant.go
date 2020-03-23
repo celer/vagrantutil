@@ -374,6 +374,9 @@ func (v *Vagrant) BoxRemove(box *Box) (<-chan *CommandOutput, error) {
 // the Error field if there is any.
 func (v *Vagrant) SSH(command string) (<-chan *CommandOutput, error) {
 	args := []string{"ssh", "-c", command}
+	if v.ID != "" {
+		args = []string{"ssh", v.ID, "-c", command}
+	}
 	return v.vagrantCommand().start(args...)
 }
 
