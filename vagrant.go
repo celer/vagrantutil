@@ -51,6 +51,9 @@ type Vagrant struct {
 	// ProviderName overwrites the default provider used for the Vagrantfile.
 	ProviderName string
 
+	// Name is the name of the box given in the config file.
+	Name string
+
 	// ID is the unique ID of the given box.
 	ID string
 
@@ -220,6 +223,7 @@ func (v *Vagrant) List() ([]*Vagrant, error) {
 		// example box: [0c269f6 default virtualbox aborted /Users/fatih/path]
 		boxes[i] = &Vagrant{
 			ID:              box[0],
+			Name:            box[1],
 			VagrantfilePath: box[len(box)-1],
 			State:           box[3],
 		}
@@ -404,7 +408,7 @@ func (v *Vagrant) SSHConfig() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return out, nil	
+	return out, nil
 }
 
 // toArgs converts the given box to argument list for `vagrant box add/remove`
