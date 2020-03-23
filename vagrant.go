@@ -9,9 +9,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/koding/logging"
+	"golang.org/x/crypto/ssh"
 )
 
 //go:generate stringer -type=Status  -output=stringer.go
@@ -419,9 +421,58 @@ func (v *Vagrant) error(err error) error {
 	return err
 }
 
+func (v *Vagrant) SSHClient() (*ssh.Client, error) {
+	sc, err := v.SSHConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	port := 22
+	var addr string
+	sshConfig := &ssh.ClientConfig{}
+	for _, line := range strings.Split(sc, "\n") {
+		line = strings.TrimLeft(line, " \t")
+		v := strings.Split(line, " ")
+		if v[0] == "User" {
+			sshConfig.User = v[1]
+		} else if v[0] == "Port" {
+			port, err = strconv.Atoi(v[1])
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse ssh port: %w", err)
+			}
+		} else if v[0] == "HostName" {
+			addr = v[1]
+		} else if v[0] == "IdentityFile" {
+			buffer, err := ioutil.ReadFile(v[1])
+			if err != nil {
+				return nil, fmt.Errorf("failed to read ssh identity file: %w", err)
+			}
+			key, err := ssh.ParsePrivateKey(buffer)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse ssh identity: %w", err)
+			}
+			sshConfig.Auth = []ssh.AuthMethod{
+				ssh.PublicKeys(key),
+			}
+		}
+	}
+
+	sshConfig.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", addr, port), sshConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error dailing ssh server: %w", err)
+	}
+	return client, nil
+}
+
 // Runs "ssh-config" and returns the output.
 func (v *Vagrant) SSHConfig() (string, error) {
-	out, err := v.vagrantCommand().run("ssh-config")
+	args := []string{"ssh-config"}
+	if v.ID != "" {
+		args = append(args, v.ID)
+	}
+	out, err := v.vagrantCommand().run(args...)
 	if err != nil {
 		return "", err
 	}
