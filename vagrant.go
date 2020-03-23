@@ -232,6 +232,20 @@ func (v *Vagrant) List() ([]*Vagrant, error) {
 	return boxes, nil
 }
 
+// Get returns the box with the specified name or ID
+func (v *Vagrant) Get(nameOrID string) (*Vagrant, error) {
+	vs, err := v.List()
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range vs {
+		if v.Name == nameOrID || v.ID == nameOrID {
+			return v, nil
+		}
+	}
+	return nil, nil
+}
+
 // Up executes "vagrant up" for the given vagrantfile. The returned channel
 // contains the output stream. At the end of the output, the error is put into
 // the Error field if there is any.
